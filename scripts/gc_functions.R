@@ -164,36 +164,45 @@ flag_n2o_calibrants <- function(n2o_calibrants) {
 
 n2o_calibration <- function(n2o_calibrants, data) {
   
-  # TBD Cam will check. Might be some issues with the standards
   model_0.98 <- lm(n2o_std ~ -1 + n2o_area + I(n2o_area^2), 
                    n2o_calibrants, 
-                   subset = n2o_std <= 0.99 & 
-                     !is.na(n2o_area) & n2o_area > 0)
-  model_9.52 <- lm(n2o_std ~ -1 + n2o_area + I(n2o_area^2), 
-                   n2o_calibrants, 
-                   subset = n2o_std <= 9.52 & 
-                     !is.na(n2o_area) & n2o_area > 0)
+                   subset = n2o_std <= 0.99  & 
+                            !is.na(n2o_area) & 
+                            n2o_area > 0)
+  
+  # Cam determined that there exist issues with the 9.52 ppm standard. For now, 
+  # do not use the 9.52 model NOR the standard when running the 80 model. Code
+  # exists here if ever future use of this model are desired.
+  # model_9.52 <- lm(n2o_std ~ -1 + n2o_area + I(n2o_area^2), 
+  #                  n2o_calibrants, 
+  #                  subset = n2o_std <= 9.52  & 
+  #                          !is.na(n2o_area) & 
+  #                           n2o_area > 0)
+  
   model_80   <- lm(n2o_std ~ -1 + n2o_area + I(n2o_area^2), 
                    n2o_calibrants, 
-                   subset = n2o_std <= 80   & 
-                     !is.na(n2o_area) & n2o_area > 0)
+                   subset = n2o_std <= 80    & 
+                            n2o_std != 9.52  & # See comment above
+                            !is.na(n2o_area) & 
+                            n2o_area > 0)
   
   data_calibrated <- data %>%
     mutate(n2o_0.98 = model_0.98$coefficients[2] * n2o_area^2 + 
                       model_0.98$coefficients[1] * n2o_area,
-           n2o_9.52 = model_9.52$coefficients[2] * n2o_area^2 + 
-                      model_9.52$coefficients[1] * n2o_area,
+           # See comment above
+           # n2o_9.52 = model_9.52$coefficients[2] * n2o_area^2 + 
+           #            model_9.52$coefficients[1] * n2o_area, 
            n2o_80   = model_80$coefficients[2]   * n2o_area^2 + 
                       model_80$coefficients[1]   * n2o_area) %>%
-   # TBD why is this the way its done?
     mutate(n2o = case_when(n2o_0.98 <= 1                 ~ n2o_0.98,
-                           n2o_9.52 > 1 & n2o_9.52 <= 10 ~ n2o_9.52,
+                           # See comment above
+                           # n2o_9.52 > 1 & n2o_9.52 <= 10 ~ n2o_9.52,
                            TRUE                          ~ n2o_80),
-           # TBD do we want this col?
            n2o_model_used = case_when(n2o_0.98 <= 1                 ~ 0.98,
-                                      n2o_9.52 > 1 & n2o_9.52 <= 10 ~ 9.52,
-                                      TRUE                          ~ 80)) %>% 
-    select(-c(n2o_area, n2o_0.98, n2o_9.52, n2o_80)) 
+                                      # n2o_9.52 > 1 & n2o_9.52 <= 10 ~ 9.52,
+                                      TRUE                          ~ 80)) %>%
+    select(exetainer_ID:n2o, n2o_model_used, source_file) 
+   
 
   return(data_calibrated)
       
