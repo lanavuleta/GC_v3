@@ -1,16 +1,12 @@
-#############################
-## SmartChem processing code
+################################################################################
+## GC processing code
 
-## Authors: LV
+# Contact Lana Vuleta (lana.vuleta@usask.ca) with questions
+# Code based on scripts from Jared Wolfe
 
-## 2022/11/02
-#############################
+################################################################################
 
-# How to: 
-# 1) COPY the files you'd like to process in the "data/input" folder.
-#    This folder will be emptied by the script.
-# 2) Click "Run" (button in the top right corner).
-# 3) Check the data/output file for results.
+# See readme.md for details on how to use this script
 
 source("scripts/gc_functions.R")
 source("scripts/gc_helper_functions.R")
