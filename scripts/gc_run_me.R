@@ -2,7 +2,7 @@
 ## GC processing code
 
 # Contact Lana Vuleta (lana.vuleta@usask.ca) with questions
-# Code based on scripts from Jared Wolfe
+# Code based on scripts developed by Lauren Miranda, Cam Hoggarth and Colin Whitfield (colin.whitfield@usask.ca)
 
 ################################################################################
 
