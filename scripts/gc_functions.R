@@ -35,10 +35,7 @@ process_gc <- function() {
                              "data/output", 
                              paste0(timestamp,
                                     "processed_",
-                                    map(filenames, str_replace, 
-                                        pattern = "data/input/(.*)", 
-                                        replacement = "\\1"))))
-
+                                    map(filenames, basename))))
   
   # Grrr the xlsx library crashes on this version of RStudio. This is a less
   # beautiful workaround
