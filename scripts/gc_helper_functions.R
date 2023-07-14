@@ -63,15 +63,16 @@ get_stnd_info <- function(n2o_cal, high_stnd) {
 }
 
 stnd_id_edit <- function(n2o_cal, calibration_ppm, check_pattern) {
-  # If there are NO calibrations but there are checks, rename the ID to be
-  # more descriptive. We don't need to check if there are any checks, as the
-  # mutate statement will only mutate checks, and otherwise won't make any 
-  # changes (but we will flag the nonexistence of the standard later)
+  # Replace any IDs that contain the check pattern (low, ref, high) with the
+  # associated ppm amount
   n2o_cal <- n2o_cal %>%
     mutate(exetainer_ID = ifelse(grepl(check_pattern, exetainer_ID,
-                                       ignore.case = TRUE) &
-                                   !grepl(calibration_ppm, exetainer_ID),
+                                       ignore.case = TRUE),
                                  paste(calibration_ppm, "ppm N2O"),
                                  exetainer_ID))
 
+}
+
+correct_dry_to_wet <- function(values) {
+  corrected <- (values/10^6)*(1-pH2O/101.325)*10^6
 }
