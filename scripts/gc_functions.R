@@ -21,7 +21,8 @@ process_gc <- function() {
     map(get_n2o_calibrants) %>%
     map(flag_n2o_calibrants)
   
-  data_calibrated <- map2(n2o_calibrants, data, n2o_calibration)
+  data_calibrated <- map2(n2o_calibrants, data, n2o_calibration) %>%
+    map(apply_correction)
   
   # Write data -----------------------------------------------------------------
   print("Writing the data to file (check the output folder!)...")
@@ -78,8 +79,8 @@ get_n2o_calibrants <- function(data) {
   # This is usually if the run was of atmospheric samples or reruns known to 
   # have low N2O concentrations. This would (usually) be indicated by IDs like
   # "high 9.52 N2O", or IDs in which both the keywords "high" and "9.52" exist
-  high_stnd <- ifelse(any(grepl("high", data$exetainer_ID) & 
-                            grepl("9.52", data$exetainer_ID)),
+  high_stnd <- ifelse(any(grepl("high", data$exetainer_ID, ignore.case = TRUE) & 
+                            grepl("9.52", data$exetainer_ID, ignore.case = TRUE)),
                       9.52,
                       80)
   
@@ -185,6 +186,15 @@ n2o_calibration <- function(n2o_calibrants, data) {
    
   return(data_calibrated)
       
+}
+
+apply_correction <- function(data_calibrated) {
+
+  data_calibrated <- data_calibrated %>%
+    mutate(ch4 = correct_dry_to_wet(ch4),
+           co2 = correct_dry_to_wet(co2),
+           n2o = correct_dry_to_wet(n2o))
+    
 }
 
 write_data <- function(data_calibrated, n2o_calibrants, filenames_out) {
