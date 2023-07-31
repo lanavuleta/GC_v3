@@ -60,12 +60,12 @@ read_gc <- function(filename) {
            file,
            ch4_tcd  = ends_with("TCD_QTY"), 
            ch4      = ends_with("CH4_QTY"), 
-           co2      = ends_with("CO2_QTY"),
+           co2_ppmv = ends_with("CO2_QTY"),
            n2o_area = contains("N2O_AREA")) %>%
     # At the 50000 ppm mark, we switch from using FID detector values to TCD
     # detector values, as TCD values are more accurate past that level
-    mutate(ch4 = if_else(ch4 > 50000 | ch4 == 0, ch4_tcd, ch4)) %>%
-    select(-ch4_tcd)
+    mutate(ch4_ppmv = if_else(ch4 > 50000 | ch4 == 0, ch4_tcd, ch4)) %>%
+    select(-c(ch4_tcd, ch4))
   
   return(data)
   
@@ -174,15 +174,15 @@ n2o_calibration <- function(n2o_calibrants, data) {
            #            model_9.52$coefficients[1] * n2o_area, 
            n2o_80   = model_80$coefficients[2]   * n2o_area^2 + 
                       model_80$coefficients[1]   * n2o_area) %>%
-    mutate(n2o = case_when(n2o_0.98 <= 1                 ~ n2o_0.98,
-                           # See Comment 1
-                           # n2o_9.52 > 1 & n2o_9.52 <= 10 ~ n2o_9.52,
-                           TRUE                          ~ n2o_80),
+    mutate(n2o_ppmv = case_when(n2o_0.98 <= 1                 ~ n2o_0.98,
+                                # See Comment 1
+                                # n2o_9.52 > 1 & n2o_9.52 <= 10 ~ n2o_9.52,
+                                TRUE                          ~ n2o_80),
            n2o_model_used = case_when(n2o_0.98 <= 1                 ~ 0.98,
                                       # See Comment 1
                                       # n2o_9.52 > 1 & n2o_9.52 <= 10 ~ 9.52,
                                       TRUE                          ~ 80)) %>%
-    select(file, exetainer_ID, ch4, co2, n2o, n2o_model_used) 
+    select(file, exetainer_ID, ch4_ppmv, co2_ppmv, n2o_ppmv, n2o_model_used) 
    
   return(data_calibrated)
       
@@ -191,9 +191,9 @@ n2o_calibration <- function(n2o_calibrants, data) {
 apply_correction <- function(data_calibrated) {
 
   data_calibrated <- data_calibrated %>%
-    mutate(ch4 = correct_dry_to_wet(ch4),
-           co2 = correct_dry_to_wet(co2),
-           n2o = correct_dry_to_wet(n2o))
+    mutate(ch4_ppmv = correct_dry_to_wet(ch4_ppmv),
+           co2_ppmv = correct_dry_to_wet(co2_ppmv),
+           n2o_ppmv = correct_dry_to_wet(n2o_ppmv))
     
 }
 
