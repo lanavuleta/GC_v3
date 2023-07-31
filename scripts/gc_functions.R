@@ -30,13 +30,14 @@ process_gc <- function() {
   # In case if these directories are not yet created, create them
   dir.create(path = "data/output", showWarnings = FALSE)
   
-  timestamp <- format(Sys.time(), "%Y%m%d_%H%M_")
+  timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
   # To name output files using the input filename (without path)
   filenames_out <- as.list(file.path(here(), 
                              "data/output", 
-                             paste0(timestamp,
-                                    "processed_",
-                                    map(filenames, basename))))
+                             paste0(tools::file_path_sans_ext(basename(filenames)),
+                                    "_processed_",
+                                    timestamp,
+                                    ".xlsx")))
   
   # Grrr the xlsx library crashes on this version of RStudio. This is a less
   # beautiful workaround
