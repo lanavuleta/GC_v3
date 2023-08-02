@@ -73,28 +73,39 @@ read_gc <- function(filename) {
 }
 
 get_n2o_calibrants <- function(data) {
-
-  standards_regex <- "0\\.1|0\\.317|0\\.69|0\\.98|9\\.52|(\\D|^)80|ref|low|high"
   
-  # For some runs, the 9.52 ppm is used as the high check instead of 80 ppm.
-  # This is usually if the run was of atmospheric samples or reruns known to 
-  # have low N2O concentrations. This would (usually) be indicated by IDs like
-  # "high 9.52 N2O", or IDs in which both the keywords "high" and "9.52" exist
-  high_stnd <- ifelse(any(grepl("high", data$exetainer_ID, ignore.case = TRUE) & 
-                            grepl("9.52", data$exetainer_ID, ignore.case = TRUE)),
-                      9.52,
-                      80)
+  data <- data %>%
+    mutate(row_num = row_number())
   
-  n2o_calibrants <- data %>% 
-    select(exetainer_ID, n2o_area) %>%
-    filter(grepl(exetainer_ID, 
-                 pattern = standards_regex,
-                 ignore.case = TRUE)) %>%
-    get_stnd_info(high_stnd) %>%
-    # exetainer_ID is not consistent between files in naming each standard,
-    # so we pull out the ppm value from each ID
-    mutate(n2o_std = as.numeric(str_extract(exetainer_ID, 
-                                            pattern = standards_regex))) %>%
+  # Want a sheet in the final excel that indicates any flags of interest. Here
+  # we produce the dataframe that will be stored in that sheet
+  n2o_std_all <- data.frame(n2o_std_regex = c("0\\.1", 
+                                              "0\\.317", 
+                                              "0\\.69", 
+                                              "0\\.98", 
+                                              "9\\.52", 
+                                              "80"))
+  
+  n2o_calibrants <- filename %>%
+    read_xlsx(sheet = 2) %>%
+    rename(exetainer_ID  = RUNINFO,
+           n2o_std = STANDARD) %>%
+    left_join(data, by = join_by(exetainer_ID)) %>%
+    # Only use the 1st 2 instances of each stnd from the 1st 50 rows
+    filter(row_num <= 50) %>%
+    select(n2o_std, n2o_area) %>%
+    # Standardize all of the standards (ie collapse 0.3171 and 0.317 into one 
+    # std, collapse 0.98 and 0.989 into one std)
+    regex_left_join(n2o_std_all, by = c("n2o_std" = "n2o_std_regex")) %>%
+    # This ugly looking "\\\\" is to remove the back slashes that exist in the
+    # n2o_std_regex column (double backslash is the escape character that lets
+    # R know that the period that follows means a period rather than 'any
+    # character', which is the other meaning of a period in regular expressions)
+    mutate(n2o_std = as.numeric(str_remove(n2o_std_regex, "\\\\"))) %>%
+    # Filter out any non-N2O stds (any standards with non-numeric inputs or inputs
+    # that don't match the expected standards)
+    filter(!is.na(n2o_std)) %>%
+    select(n2o_std, n2o_area) %>% 
     group_by(n2o_std) %>%
     mutate(flags = ifelse(all(n2o_area == 0), "All areas are zero", 
                           case_when(sum(n2o_area != 0) == 1 ~ "One non-zero area", 
@@ -110,7 +121,7 @@ get_n2o_calibrants <- function(data) {
     summarise(n2o_area_mean = round(mean(n2o_area, na.rm = TRUE), 4),
               # If there is a 10% or more difference between repeats of each stnd
               # (if repeats exist), there might be issues with the curve fits
-              flags         = drift_check(flags, n2o_area, n2o_area_mean, n2o_std)) %>%
+              flags   = drift_check(flags, n2o_area, n2o_area_mean, n2o_std)) %>%
     mutate(n2o_area = n2o_area_mean) %>%
     select(-n2o_area_mean)
     
@@ -120,23 +131,12 @@ flag_n2o_calibrants <- function(n2o_calibrants) {
   
   # Want a sheet in the final excel that indicates any flags of interest. Here
   # we produce the dataframe that will be stored in that sheet
-  n2o_std_all <- data.frame(n2o_std_regex = c("0\\.1", 
-                                              "0\\.317", 
-                                              "0\\.69", 
-                                              "0\\.98", 
-                                              "9\\.52", 
-                                              "80"))
+  n2o_std_all <- data.frame(n2o_std = c(0.1, 0.317, 0.69, 0.98, 9.52, 80, 100))
   
   n2o_calibrants <- n2o_calibrants %>% 
-    # So that regex_right_join can match rows, change n2o_std to character
-    mutate(n2o_std = as.character(n2o_std)) %>%
-    regex_right_join(n2o_std_all, by = c("n2o_std" = "n2o_std_regex")) %>%
+    right_join(n2o_std_all, by = c("n2o_std")) %>%
     rowwise() %>%
-    mutate(n2o_std = ifelse(is.na(n2o_std),
-                            # Store numbers rather than regex in n2o_std column
-                            str_remove(n2o_std_regex, "\\\\"),
-                            n2o_std),
-           flags = ifelse(is.na(n2o_area), "Standard was not run", flags)) %>%
+    mutate(flags = ifelse(is.na(n2o_area), "Standard was not run", flags)) %>%
     select(n2o_std, n2o_area, flags)
   
   return(n2o_calibrants)
