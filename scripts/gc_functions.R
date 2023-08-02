@@ -13,16 +13,17 @@ process_gc <- function() {
   
   print("Reading in the data...")
   
-  data <- map(filenames, read_gc)
+  data  <- map(filenames, read_gc)
+  stnds <- map(filenames, read_stnd)
   
   print("Calibrating N2O values...")
   
   n2o_calibrants <- data %>%
-    map(get_n2o_calibrants) %>%
+    map2(stnds, get_n2o_calibrants) %>%
     map(flag_n2o_calibrants)
   
-  data_calibrated <- map2(n2o_calibrants, data, n2o_calibration) %>%
-    map(apply_correction)
+  data_calibrated <- map2(n2o_calibrants, data, n2o_calibration)
+  data_corrected  <- map2(data_calibrated, stnds, apply_correction)
   
   # Write data -----------------------------------------------------------------
   print("Writing the data to file (check the output folder!)...")
@@ -41,7 +42,7 @@ process_gc <- function() {
   
   # Grrr the xlsx library crashes on this version of RStudio. This is a less
   # beautiful workaround
-  pmap(list(data_calibrated, n2o_calibrants, filenames_out), write_data)
+  pmap(list(data_calibrated, data_corrected, n2o_calibrants, filenames_out), write_data)
   
   # So that the "data/input" folder is empty for the next runs of the script
   print("Removing files in the input folder...")
@@ -72,13 +73,21 @@ read_gc <- function(filename) {
   
 }
 
-get_n2o_calibrants <- function(data) {
+read_stnd <- function(filename) {
+  n2o_calibrants <- filename %>%
+    read_xlsx(sheet = 2) %>%
+    rename(exetainer_ID  = RUNINFO,
+           n2o_std = STANDARD)
+  
+}
+
+get_n2o_calibrants <- function(data, n2o_calibrants) {
   
   data <- data %>%
     mutate(row_num = row_number())
   
-  # Want a sheet in the final excel that indicates any flags of interest. Here
-  # we produce the dataframe that will be stored in that sheet
+  # Want to standardize all the input standards and remove additional decimal
+  # places
   n2o_std_all <- data.frame(n2o_std_regex = c("0\\.1", 
                                               "0\\.317", 
                                               "0\\.69", 
@@ -86,11 +95,8 @@ get_n2o_calibrants <- function(data) {
                                               "9\\.52", 
                                               "80"))
   
-  n2o_calibrants <- filename %>%
-    read_xlsx(sheet = 2) %>%
-    rename(exetainer_ID  = RUNINFO,
-           n2o_std = STANDARD) %>%
-    left_join(data, by = join_by(exetainer_ID)) %>%
+  n2o_calibrants <- n2o_calibrants %>%
+    left_join(data, by = join_by(exetainer_ID), relationship = "many-to-many") %>%
     # Only use the 1st 2 instances of each stnd from the 1st 50 rows
     filter(row_num <= 50) %>%
     select(n2o_std, n2o_area) %>%
@@ -131,7 +137,7 @@ flag_n2o_calibrants <- function(n2o_calibrants) {
   
   # Want a sheet in the final excel that indicates any flags of interest. Here
   # we produce the dataframe that will be stored in that sheet
-  n2o_std_all <- data.frame(n2o_std = c(0.1, 0.317, 0.69, 0.98, 9.52, 80, 100))
+  n2o_std_all <- data.frame(n2o_std = c(0.1, 0.317, 0.69, 0.98, 9.52, 80))
   
   n2o_calibrants <- n2o_calibrants %>% 
     right_join(n2o_std_all, by = c("n2o_std")) %>%
@@ -198,18 +204,22 @@ n2o_calibration <- function(n2o_calibrants, data) {
       
 }
 
-apply_correction <- function(data_calibrated) {
+apply_correction <- function(data_calibrated, stnd) {
 
-  data_calibrated <- data_calibrated %>%
+  data_corrected <- data_calibrated %>%
     mutate(ch4_ppmv = correct_dry_to_wet(ch4_ppmv),
            co2_ppmv = correct_dry_to_wet(co2_ppmv),
-           n2o_ppmv = correct_dry_to_wet(n2o_ppmv))
+           n2o_ppmv = correct_dry_to_wet(n2o_ppmv)) %>%
+    # Want the corrected data only to include the samples (not the stnds or lab air)
+    filter(!exetainer_ID %in% stnd$exetainer_ID & 
+             !grepl("lab ?air", exetainer_ID, ignore.case = TRUE))
     
 }
 
-write_data <- function(data_calibrated, n2o_calibrants, filenames_out) {
+write_data <- function(data_calibrated, data_corrected, n2o_calibrants, filenames_out) {
   
   sheets <- list('calibrated_data' = data_calibrated, 
+                 'corrected_data' = data_corrected,
                  'calibration_flags' = n2o_calibrants)
   
   write.xlsx(sheets, filenames_out)
