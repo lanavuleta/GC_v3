@@ -20,7 +20,7 @@ Gas Chromatograph processing code v3.
  7) Go to File -> Open File, and select *scripts/gc_run_me.R*.
  8) Select all code in the script (for example, by using Ctrl+a).
  9) Run the code, either by clicking *Run* (button in the top right corner) or by pressing *Ctrl+Enter*.
- 10) Check the data/output file for results. Outputs are named as: runDate_runTime_numberOfProcessedFiles.
+ 10) Check the data/output file for results. Outputs are named as: filename_processed_runDate_runTime.
 
 ## Repo content information
 
