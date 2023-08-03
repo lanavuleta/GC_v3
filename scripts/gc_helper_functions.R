@@ -55,24 +55,6 @@ drift_check <- function(flags, n2o_area, n2o_area_mean, n2o_std) {
   
 }
 
-get_stnd_info <- function(n2o_cal, high_stnd) {
-  n2o_cal <- n2o_cal %>%
-    stnd_id_edit("0.1", "low") %>%
-    stnd_id_edit("0.317", "ref") %>%
-    stnd_id_edit(high_stnd, "high")
-}
-
-stnd_id_edit <- function(n2o_cal, calibration_ppm, check_pattern) {
-  # Replace any IDs that contain the check pattern (low, ref, high) with the
-  # associated ppm amount
-  n2o_cal <- n2o_cal %>%
-    mutate(exetainer_ID = ifelse(grepl(check_pattern, exetainer_ID,
-                                       ignore.case = TRUE),
-                                 paste(calibration_ppm, "ppm N2O"),
-                                 exetainer_ID))
-
-}
-
 correct_dry_to_wet <- function(values) {
   T <- 20+273.15 # Lab temp K
   # Partial pressure of water at lab temperature converted to kPa

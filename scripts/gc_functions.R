@@ -207,12 +207,12 @@ n2o_calibration <- function(n2o_calibrants, data) {
 apply_correction <- function(data_calibrated, stnd) {
 
   data_corrected <- data_calibrated %>%
-    mutate(ch4_ppmv = correct_dry_to_wet(ch4_ppmv),
-           co2_ppmv = correct_dry_to_wet(co2_ppmv),
-           n2o_ppmv = correct_dry_to_wet(n2o_ppmv)) %>%
     # Want the corrected data only to include the samples (not the stnds or lab air)
     filter(!exetainer_ID %in% stnd$exetainer_ID & 
-             !grepl("lab ?air", exetainer_ID, ignore.case = TRUE))
+             !grepl("lab ?air", exetainer_ID, ignore.case = TRUE)) %>%
+    mutate(ch4_ppmv = correct_dry_to_wet(ch4_ppmv),
+           co2_ppmv = correct_dry_to_wet(co2_ppmv),
+           n2o_ppmv = correct_dry_to_wet(n2o_ppmv))
     
 }
 
