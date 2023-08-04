@@ -195,7 +195,7 @@ n2o_calibration <- function(n2o_calibrants, data) {
                       model_80$coefficients[1]   * n2o_area) %>%
     # See Comment 1. In future edit this mutate to account for use of the 9.52 model
     mutate(n2o_model_used = case_when(isTRUE(use_80_model) & n2o_0.98 >= 5 ~ 80,
-                                      TRUE ~ 9.52),
+                                      TRUE ~ 0.98),
            n2o_ppmv = case_when(n2o_model_used == 80 ~ n2o_80,
                                 TRUE                 ~ n2o_0.98)) %>%
     select(file, exetainer_ID, ch4_ppmv, co2_ppmv, n2o_ppmv, n2o_model_used) 
